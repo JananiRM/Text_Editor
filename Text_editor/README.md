@@ -1,4 +1,5 @@
 TEXT EDITOR Application
+
 Overview : 
 This application allows users to select a font family and variant from a JSON file, apply the selected font to a text area, and save the selected font family, variant, and text locally in the browser. It automatically handles cases where the selected font variant may not be available for a new font family.
 
