@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Font Family Dropdown with Auto Save</title>
+    <style>
+        #textInput {
+            width: 100%;
+            height: 200px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Select a Font Family and Variant</h2>
+    <form id="fontForm">
+        <label for="fontFamily">Font Family:</label>
+        <select id="fontFamily" name="fontFamily">
+            <option value="">Select a font family</option>
+        </select>
+        <br><br>
+        <label for="fontVariant">Font Variant:</label>
+        <select id="fontVariant" name="fontVariant" disabled>
+            <option value="">Select a font variant</option>
+        </select>
+        <br><br>
+        <label for="italicToggle">Italic:</label>
+        <input type="checkbox" id="italicToggle" name="italicToggle" disabled>
+        <br><br>
+        <label for="textInput">Text:</label>
+        <textarea id="textInput" name="textInput" rows="4" cols="50" placeholder="Enter the text"></textarea>
+        <br><br>
+        <input type="reset" value="Reset">
+        <input type="submit" value="Submit">
+    </form>
+
+    <script>
+        fetch('font-family.json')
+            .then(response => response.json())
+            .then(data => {
+                const fontFamilySelect = document.getElementById('fontFamily');
+                const fontVariantSelect = document.getElementById('fontVariant');
+                const italicToggle = document.getElementById('italicToggle');
+                const textInput = document.getElementById('textInput');
+
+                for (const fontFamily in data) {
+                    const option = document.createElement('option');
+                    option.value = fontFamily;
+                    option.textContent = fontFamily;
+                    fontFamilySelect.appendChild(option);
+                }
+
+                const savedFontFamily = localStorage.getItem('fontFamily');
+                const savedFontVariant = localStorage.getItem('fontVariant');
+                const savedItalic = localStorage.getItem('italic') === 'true';
+                const savedText = localStorage.getItem('text');
+
+                if (savedFontFamily) {
+                    fontFamilySelect.value = savedFontFamily;
+                    populateVariants(savedFontFamily, savedFontVariant);
+                }
+
+                if (savedText) {
+                    textInput.value = savedText;
+                }
+
+                fontFamilySelect.addEventListener('change', function() {
+                    const selectedFontFamily = this.value;
+                    const selectedFontVariant = fontVariantSelect.value;
+                    localStorage.setItem('fontFamily', selectedFontFamily);
+                    fontVariantSelect.innerHTML = '<option value="">Select a font variant</option>';
+                    fontVariantSelect.disabled = true;
+                    italicToggle.disabled = true;
+                    italicToggle.checked = false;
+
+                    if (selectedFontFamily) {
+                        populateVariants(selectedFontFamily, selectedFontVariant);
+                    }
+
+                    updateTextAreaFont();
+                });
+
+                fontVariantSelect.addEventListener('change', function() {
+                    const selectedFontVariant = this.value;
+                    localStorage.setItem('fontVariant', selectedFontVariant);
+                    if (selectedFontVariant.includes('italic')) {
+                        italicToggle.checked = true;
+                    } else {
+                        italicToggle.checked = false;
+                    }
+
+                    updateTextAreaFont();
+                });
+
+                italicToggle.addEventListener('change', function() {
+                    localStorage.setItem('italic', this.checked);
+                    updateTextAreaFont();
+                });
+
+                textInput.addEventListener('input', function() {
+                    localStorage.setItem('text', this.value);
+                });
+
+                function populateVariants(fontFamily, previousVariant = '') {
+                    const variants = data[fontFamily];
+                    for (const variant in variants) {
+                        const option = document.createElement('option');
+                        option.value = variant;
+                        option.textContent = variant;
+                        fontVariantSelect.appendChild(option);
+                    }
+                    fontVariantSelect.disabled = false;
+
+                    if (previousVariant) {
+                        const closestVariant = findClosestVariant(fontFamily, previousVariant);
+                        fontVariantSelect.value = closestVariant;
+                        italicToggle.checked = closestVariant.includes('italic');
+                    }
+                }
+
+                function findClosestVariant(fontFamily, previousVariant) {
+                    const variants = Object.keys(data[fontFamily]);
+                    let closestVariant = variants[0];
+
+                    if (previousVariant.includes('italic')) {
+                        closestVariant = variants.find(v => v.includes('italic')) || closestVariant;
+                    }
+
+                    const previousWeight = parseInt(previousVariant.replace('italic', '') || '400');
+                    closestVariant = variants.reduce((prev, curr) => {
+                        const prevWeight = parseInt(prev.replace('italic', '') || '400');
+                        const currWeight = parseInt(curr.replace('italic', '') || '400');
+                        return Math.abs(currWeight - previousWeight) < Math.abs(prevWeight - previousWeight) ? curr : prev;
+                    }, closestVariant);
+
+                    return closestVariant;
+                }
+
+                function updateTextAreaFont() {
+                    const selectedFontFamily = fontFamilySelect.value;
+                    const selectedFontVariant = fontVariantSelect.value;
+                    const isItalic = italicToggle.checked;
+                    let fontStyle = '';
+
+                    if (selectedFontFamily) {
+                        fontStyle += `font-family: ${selectedFontFamily}; `;
+                    }
+
+                    if (selectedFontVariant) {
+                        fontStyle += `font-weight: ${selectedFontVariant.replace('italic', '')}; `;
+                    }
+
+                    if (isItalic) {
+                        fontStyle += 'font-style: italic; ';
+                    }
+
+                    textInput.style = fontStyle;
+                }
+            })
+            .catch(error => console.error('Error fetching the JSON file:', error));
+    </script>
+</body>
+</html>
